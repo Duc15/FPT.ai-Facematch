@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui';
+import 'dart:math';
 
 class FaceCaptureScreen extends StatefulWidget {
   final Function(String imagePath) onImageCaptured;
@@ -45,7 +45,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
 
   void _startCountdown() {
     setState(() {
-      _countdown = 3; // Bắt đầu đếm ngược từ 3 giây
+      _countdown = 10; // Bắt đầu đếm ngược từ 3 giây
     });
 
     _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -94,10 +94,8 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
         children: [
           // Hiển thị Camera
           CameraPreview(_cameraController!),
-          // Hiệu ứng mờ xung quanh
-          _buildBlurEffect(),
-          // Khung viền elip
-          _buildEllipseBorder(),
+          // Vòng tròn với các thanh
+          _buildCircleWithBars(),
           // Nội dung đếm ngược
           if (_countdown != null)
             Center(
@@ -129,83 +127,84 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
     );
   }
 
-  Widget _buildBlurEffect() {
+  Widget _buildCircleWithBars() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final height = constraints.maxHeight;
-
-        // Định nghĩa kích thước hình bầu dục (ellipse)
-        final ellipseWidth =
-            width * 0.6; // Tăng kích thước chiều rộng lên 60% màn hình
-        final ellipseHeight =
-            height * 0.4; // Tăng kích thước chiều cao lên 40% màn hình
-        final centerY =
-            height * 0.4; // Đặt hình bầu dục ở 40% chiều cao từ trên xuống
-
-        return ClipPath(
-          clipper:
-              FaceShapeClipper(width / 2, centerY, ellipseWidth, ellipseHeight),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              color: Colors.black.withOpacity(0.5),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEllipseBorder() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final height = constraints.maxHeight;
-
-        // Định nghĩa kích thước hình bầu dục (ellipse)
-        final ellipseWidth = width * 0.6;
-        final ellipseHeight = height * 0.4;
+        final centerX = width / 2;
         final centerY = height * 0.4;
+        final radius = min(width, height) * 0.3;
 
-        return Positioned(
-          top: centerY - ellipseHeight / 2,
-          left: width / 2 - ellipseWidth / 2,
-          child: Container(
-            width: ellipseWidth,
-            height: ellipseHeight,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.blue, width: 3),
-              borderRadius: BorderRadius.circular(ellipseHeight / 2),
+        return Stack(
+          children: [
+            // Vòng tròn bên trong
+            Positioned(
+              top: centerY - radius,
+              left: centerX - radius,
+              child: Container(
+                width: radius * 2,
+                height: radius * 2,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.transparent,
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+              ),
             ),
-          ),
+            // Các thanh dọc xung quanh
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: CustomPaint(
+                painter: BarsPainter(_countdown, radius),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 }
 
-class FaceShapeClipper extends CustomClipper<Path> {
-  final double centerX;
-  final double centerY;
-  final double width;
-  final double height;
+class BarsPainter extends CustomPainter {
+  final int? countdown;
+  final double radius;
 
-  FaceShapeClipper(this.centerX, this.centerY, this.width, this.height);
+  BarsPainter(this.countdown, this.radius);
 
   @override
-  Path getClip(Size size) {
-    final path = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addOval(Rect.fromCenter(
-        center: Offset(centerX, centerY),
-        width: width,
-        height: height,
-      ))
-      ..fillType = PathFillType.evenOdd; // Giữ lại phần bên ngoài hình bầu dục
-    return path;
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * 0.4);
+    final totalBars = 300; // Tăng số lượng thanh lên 100
+    final maxHeight = radius * 0.3; // Chiều cao tối đa của thanh
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    // Số lượng thanh đã "kích hoạt" dựa trên thời gian đếm ngược
+    final activatedBars =
+        countdown != null ? ((totalBars * (10 - countdown!)) / 10).ceil() : 0;
+
+    for (int i = 0; i < totalBars; i++) {
+      // Tính toán góc cho mỗi thanh, bắt đầu từ góc -π/2 (12 giờ)
+      final angle = -pi / 2 + 2 * pi * i / totalBars;
+      final startX = center.dx + radius * cos(angle);
+      final startY = center.dy + radius * sin(angle);
+
+      // Chiều cao của thanh tăng dần nếu nó đã "kích hoạt"
+      final barHeight = i < activatedBars ? maxHeight : 0;
+
+      final endX = center.dx + (radius + barHeight) * cos(angle);
+      final endY = center.dy + (radius + barHeight) * sin(angle);
+
+      canvas.drawLine(Offset(startX, startY), Offset(endX, endY), paint);
+    }
   }
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => true;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
