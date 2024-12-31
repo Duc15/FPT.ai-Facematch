@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_face_match/face_capture_screen.dart';
+import 'package:flutter_face_match/upload_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -99,8 +101,8 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
         bool isBothImgIDCard = result['data']['isBothImgIDCard'];
 
         String message = isMatch
-            ? "Faces are similar with a similarity of ${similarity.toStringAsFixed(2)}%"
-            : "Faces are not similar. Similarity: ${similarity.toStringAsFixed(2)}%";
+            ? "Mặt trùng khớp tới:  ${similarity.toStringAsFixed(2)}%"
+            : "Mặt không trùng khớp. Độ trùng khớp: ${similarity.toStringAsFixed(2)}%";
 
         if (isBothImgIDCard) {
           message += "\nBoth images are ID cards.";
@@ -109,13 +111,18 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            title: Text(isMatch ? "Faces Matched" : "Faces Did Not Match"),
+            title: Text(isMatch ? "Xác thực thành công" : "Xác thực thất bại"),
             content: Text(message),
             actions: <Widget>[
               TextButton(
                 child: Text('OK'),
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  // Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => UploadScreen(),
+                    ),
+                  );
                 },
               ),
             ],
@@ -133,7 +140,7 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Face Comparison'),
+        title: Text('Xác thực khuôn mặt'),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -145,28 +152,42 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
             // Nút chọn ảnh từ thư viện
             ElevatedButton(
               onPressed: () => _pickImageFromGallery(1),
-              child: Text('Pick Image for Face 1'),
+              child: Text('Chọn ảnh CMND'),
             ),
             ElevatedButton(
               onPressed: () => _pickImageFromGallery(2),
-              child: Text('Pick Image for Face 2'),
+              child: Text('Chọn ảnh bản thân'),
             ),
 
             // Nút chụp ảnh từ camera
             ElevatedButton(
               onPressed: () => _pickImageFromCamera(1),
-              child: Text('Capture Image for Face 1'),
+              child: Text('Chụp ảnh CMND'),
             ),
             ElevatedButton(
-              onPressed: () => _pickImageFromCamera(2),
-              child: Text('Capture Image for Face 2'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FaceCaptureScreen(
+                      onImageCaptured: (imagePath) {
+                        setState(() {
+                          _image2 = File(imagePath); // Gán ảnh chụp vào _image2
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+              child: Text('Chụp ảnh bản thân'),
             ),
 
             // Nút kiểm tra khuôn mặt
             ElevatedButton(
               onPressed: _checkFace,
-              child: Text('Check Face Similarity'),
+              child: Text('Xác thực'),
             ),
+            SizedBox(height: 80),
           ],
         ),
       ),
