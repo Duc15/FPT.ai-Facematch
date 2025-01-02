@@ -45,7 +45,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
 
   void _startCountdown() {
     setState(() {
-      _countdown = 10; // Bắt đầu đếm ngược từ 3 giây
+      _countdown = 3; // Bắt đầu đếm ngược từ 3 giây
     });
 
     _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -187,7 +187,7 @@ class BarsPainter extends CustomPainter {
 
     // Số lượng thanh đã "kích hoạt" dựa trên thời gian đếm ngược
     final activatedBars =
-        countdown != null ? ((totalBars * (10 - countdown!)) / 10).ceil() : 0;
+        countdown != null ? ((totalBars * (3 - countdown!)) / 3).ceil() : 0;
 
     for (int i = 0; i < totalBars; i++) {
       // Tính toán góc cho mỗi thanh, bắt đầu từ góc -π/2 (12 giờ)

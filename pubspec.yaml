@@ -43,6 +43,8 @@ dependencies:
   image: ^4.0.17 # Để xử lý ảnh
   permission_handler: ^10.2.0 # Để xử lý quyền truy cập camera
   fluttertoast: ^8.2.10
+  file_picker: ^5.0.0
+  flutter_spinkit: ^5.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
