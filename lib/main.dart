@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_face_match/cmnd/cmnd_check.dart';
 import 'package:flutter_face_match/image/image_check.dart'; // Thư viện so sánh qua ảnh
 import 'package:flutter_face_match/video/live_video_check.dart'; // Thư viện kiểm tra video trực tiếp
 
@@ -63,6 +64,19 @@ class Home extends StatelessWidget {
                 );
               },
               child: Text('So sánh khuôn mặt qua video'),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Chuyển đến màn hình kiểm tra video trực tiếp
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          CMNDRecognitionScreen(cameras: cameras)),
+                );
+              },
+              child: Text('Quét CMND'),
             ),
           ],
         ),
