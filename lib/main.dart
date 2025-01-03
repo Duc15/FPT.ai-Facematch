@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_face_match/cmnd/cmnd_check.dart';
 import 'package:flutter_face_match/image/image_check.dart'; // Thư viện so sánh qua ảnh
+import 'package:flutter_face_match/photo_check/photo_check.dart';
 import 'package:flutter_face_match/video/live_video_check.dart'; // Thư viện kiểm tra video trực tiếp
 
 void main() async {
@@ -47,8 +48,7 @@ class Home extends StatelessWidget {
                 // Chuyển đến màn hình so sánh khuôn mặt qua ảnh
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => FaceComparisonScreen()),
+                  MaterialPageRoute(builder: (context) => PhotoCheck()),
                 );
               },
               child: Text('So sánh khuôn mặt qua ảnh'),
@@ -76,7 +76,7 @@ class Home extends StatelessWidget {
                           CMNDRecognitionScreen(cameras: cameras)),
                 );
               },
-              child: Text('Quét CMND'),
+              child: Text('Sinh trắc học'),
             ),
           ],
         ),

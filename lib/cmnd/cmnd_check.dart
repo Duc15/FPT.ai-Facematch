@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_face_match/cmnd/cmnd_detail.dart';
+import 'package:flutter_face_match/image/image_check.dart';
 import 'package:http/http.dart' as http;
 
 class CMNDRecognitionScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  CMNDRecognitionScreen({required this.cameras});
+  const CMNDRecognitionScreen({super.key, required this.cameras});
 
   @override
   _CMNDRecognitionScreenState createState() => _CMNDRecognitionScreenState();
@@ -19,7 +19,6 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
   late CameraController _cameraController;
   bool _isCameraInitialized = false;
   File? _capturedImage;
-  String? _apiResult;
 
   @override
   void initState() {
@@ -43,6 +42,9 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
     try {
       final image = await _cameraController.takePicture();
       setState(() => _capturedImage = File(image.path));
+
+      // Tự động quét CMND sau khi chụp ảnh
+      await _scanCMND();
     } catch (e) {
       print('Error capturing image: $e');
     }
@@ -56,8 +58,10 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
       Uri.parse('https://api.fpt.ai/vision/idr/vnm'),
     );
     request.headers['api-key'] = 'PoysBbUQ3dabdBKuLiWbHn9W5Lsl2LVM';
-    request.files
-        .add(await http.MultipartFile.fromPath('image', _capturedImage!.path));
+    request.files.add(await http.MultipartFile.fromPath(
+      'image',
+      _capturedImage!.path,
+    ));
 
     try {
       final response = await request.send();
@@ -66,24 +70,26 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
         final Map<String, dynamic> jsonResponse = jsonDecode(responseBody);
 
         if (jsonResponse['errorCode'] == 0 && jsonResponse['data'] != null) {
-          // Lấy thông tin từ response
           final Map<String, dynamic> cmndData = jsonResponse['data'][0];
 
-          // Chuyển đến màn hình hiển thị thông tin
+          // Điều hướng đến màn hình mới với thông tin CMND
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CMNDDetailsScreen(cmndData: cmndData),
+              builder: (context) => FaceComparisonScreen(
+                imageCMND: _capturedImage,
+                cmndData: cmndData,
+              ),
             ),
           );
         } else {
-          setState(() => _apiResult = 'Không tìm thấy dữ liệu hợp lệ.');
+          print('Không tìm thấy dữ liệu hợp lệ.');
         }
       } else {
-        setState(() => _apiResult = 'Lỗi API: ${response.statusCode}');
+        print('Lỗi API: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _apiResult = 'Lỗi kết nối: $e');
+      print('Lỗi kết nối: $e');
     }
   }
 
@@ -97,7 +103,7 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('CMND Recognition'),
+        title: const Text('Quét CMND'),
       ),
       body: Column(
         children: [
@@ -107,8 +113,8 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
               child: CameraPreview(_cameraController),
             )
           else
-            Center(child: CircularProgressIndicator()),
-          SizedBox(height: 16),
+            const Center(child: CircularProgressIndicator()),
+          const SizedBox(height: 16),
           if (_capturedImage != null)
             Image.file(
               _capturedImage!,
@@ -116,34 +122,16 @@ class _CMNDRecognitionScreenState extends State<CMNDRecognitionScreen> {
               width: double.infinity,
               fit: BoxFit.cover,
             ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton(
                 onPressed: _captureImage,
-                child: Text('Chụp Ảnh'),
-              ),
-              // Thêm nút "Quét CMND" để chuyển thông tin sang màn hình mới
-              ElevatedButton(
-                onPressed: _scanCMND,
-                child: Text('Quét CMND'),
+                child: const Text('Chụp Ảnh'),
               ),
             ],
           ),
-          SizedBox(height: 16),
-          if (_apiResult != null)
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'API Result:\n$_apiResult',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

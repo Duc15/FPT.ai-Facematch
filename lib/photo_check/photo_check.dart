@@ -2,23 +2,20 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_face_match/image/result.dart';
 import 'package:flutter_face_match/image/take_photo_screen.dart';
 import 'package:flutter_face_match/success.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
-class FaceComparisonScreen extends StatefulWidget {
-  final File? imageCMND;
-  final Map<String, dynamic>? cmndData;
-
-  const FaceComparisonScreen({super.key, this.imageCMND, this.cmndData});
+class PhotoCheck extends StatefulWidget {
+  const PhotoCheck({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _FaceComparisonScreenState createState() => _FaceComparisonScreenState();
 }
 
-class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
+class _FaceComparisonScreenState extends State<PhotoCheck> {
   File? _image1;
   File? _image2;
 
@@ -54,8 +51,8 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
 
   // Gửi yêu cầu so sánh khuôn mặt với API
   Future<void> _checkFace() async {
-    if (widget.imageCMND == null || _image2 == null) {
-      print("Vui lòng chụp hoặc chọn cả hai ảnh");
+    if (_image1 == null || _image2 == null) {
+      print("Please select or capture both images");
       return;
     }
 
@@ -64,39 +61,67 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
       final request = http.MultipartRequest('POST', uri)
         ..headers['api-key'] = 'PoysBbUQ3dabdBKuLiWbHn9W5Lsl2LVM';
 
+      // Thêm ảnh vào request
       request.files.add(await http.MultipartFile.fromPath(
-        'file[]',
-        widget.imageCMND!.path,
-        filename: 'image1.jpg',
+        'file[]', _image1!.path,
+        filename: 'image1.jpg', // Đảm bảo rằng bạn có thêm tên tệp
       ));
+
       request.files.add(await http.MultipartFile.fromPath(
         'file[]',
         _image2!.path,
         filename: 'image2.jpg',
       ));
 
+      // Gửi yêu cầu
       final response = await request.send();
 
       if (response.statusCode == 200) {
         final responseData = await response.stream.bytesToString();
         final result = jsonDecode(responseData);
 
-        // Chuyển đến màn hình hiển thị kết quả
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FaceComparisonResultScreen(
-              apiResult: result,
-              cmndData: widget.cmndData ?? {}, // Truyền dữ liệu CMND nếu có
-              imageCMND: widget.imageCMND!,
-            ),
+        print(result); // In ra kết quả để kiểm tra
+
+        // Lấy dữ liệu trả về
+        double similarity = result['data']['similarity'];
+        bool isMatch = result['data']['isMatch'];
+        bool isBothImgIDCard = result['data']['isBothImgIDCard'];
+
+        String message = isMatch
+            ? "Mặt trùng khớp tới:  ${similarity.toStringAsFixed(2)}%"
+            : "Mặt không trùng khớp. Độ trùng khớp: ${similarity.toStringAsFixed(2)}%";
+
+        if (isBothImgIDCard) {
+          message += "\nBoth images are ID cards.";
+        }
+
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text(isMatch ? "Xác thực thành công" : "Xác thực thất bại"),
+            content: Text(message),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  // Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => SuccessScreen(
+                        similarity: similarity.toString(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         );
       } else {
-        print("Lỗi: ${response.statusCode}");
+        print("Failed to compare faces, status code: ${response.statusCode}");
       }
     } catch (e) {
-      print("Lỗi khi gửi yêu cầu: $e");
+      print("Error during face comparison: $e");
     }
   }
 
@@ -112,36 +137,25 @@ class _FaceComparisonScreenState extends State<FaceComparisonScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Hiển thị ảnh chụp từ CMNDRecognitionScreen
-              if (widget.imageCMND != null)
-                Column(
-                  children: [
-                    const Text(
-                      'Ảnh CMND đã chụp:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Image.file(widget.imageCMND!, height: 200, width: 200),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+              // Hiển thị ảnh chọn từ thư viện
+              if (_image1 != null) Image.file(_image1!),
+              if (_image2 != null) Image.file(_image2!),
 
-              // Hiển thị ảnh chọn hoặc chụp bản thân
-              if (_image2 != null)
-                Column(
-                  children: [
-                    const Text(
-                      'Ảnh bản thân:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Image.file(_image2!, height: 200, width: 200),
-                  ],
-                ),
+              // Nút chọn ảnh từ thư viện
+              ElevatedButton(
+                onPressed: () => _pickImageFromGallery(1),
+                child: const Text('Chọn ảnh CMND'),
+              ),
+              ElevatedButton(
+                onPressed: () => _pickImageFromGallery(2),
+                child: const Text('Chọn ảnh bản thân'),
+              ),
 
-              const SizedBox(height: 16),
-
-              // Nút chụp ảnh bản thân
+              // Nút chụp ảnh từ camera
+              ElevatedButton(
+                onPressed: () => _pickImageFromCamera(1),
+                child: const Text('Chụp ảnh CMND'),
+              ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
